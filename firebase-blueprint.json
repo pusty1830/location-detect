@@ -1,0 +1,139 @@
+{
+  "entities": {
+    "LocationSession": {
+      "title": "LocationSession",
+      "description": "Represents an authorized real-time location sharing session with device owner consent.",
+      "type": "object",
+      "properties": {
+        "sessionId": {
+          "type": "string",
+          "description": "Unique session identifier",
+          "pattern": "^[a-zA-Z0-9_-]+$",
+          "maxLength": 128
+        },
+        "creatorId": {
+          "type": "string",
+          "description": "User ID of the session initiator",
+          "pattern": "^[a-zA-Z0-9_-]+$",
+          "maxLength": 128
+        },
+        "targetPhoneNumber": {
+          "type": "string",
+          "description": "Validated mobile phone number with country code",
+          "maxLength": 30
+        },
+        "targetCountry": {
+          "type": "string",
+          "description": "ISO country code or name",
+          "maxLength": 10
+        },
+        "deviceName": {
+          "type": "string",
+          "description": "Device model or browser label",
+          "maxLength": 100
+        },
+        "status": {
+          "type": "string",
+          "description": "Current status of the sharing session",
+          "enum": ["pending_consent", "sharing_active", "sharing_stopped", "sos_active"]
+        },
+        "consentGranted": {
+          "type": "boolean",
+          "description": "Whether device owner explicitly authorized GPS tracking"
+        },
+        "currentLat": {
+          "type": "number",
+          "description": "Current latitude from device GPS"
+        },
+        "currentLng": {
+          "type": "number",
+          "description": "Current longitude from device GPS"
+        },
+        "accuracy": {
+          "type": "number",
+          "description": "GPS accuracy in meters"
+        },
+        "address": {
+          "type": "string",
+          "description": "Reverse-geocoded human-readable location address",
+          "maxLength": 300
+        },
+        "batteryLevel": {
+          "type": "number",
+          "description": "Device battery percentage (0-100)"
+        },
+        "isEmergency": {
+          "type": "boolean",
+          "description": "Indicates if SOS emergency beacon is currently triggered"
+        },
+        "emergencyNote": {
+          "type": "string",
+          "description": "Optional distress note or medical instruction",
+          "maxLength": 500
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when session was initiated"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp of the last GPS update"
+        }
+      },
+      "required": ["sessionId", "creatorId", "targetPhoneNumber", "status", "consentGranted"]
+    },
+    "EmergencyContact": {
+      "title": "EmergencyContact",
+      "description": "Emergency contact profile for SOS dispatches.",
+      "type": "object",
+      "properties": {
+        "contactId": {
+          "type": "string",
+          "description": "Unique contact ID",
+          "pattern": "^[a-zA-Z0-9_-]+$",
+          "maxLength": 128
+        },
+        "userId": {
+          "type": "string",
+          "description": "Owner user UID",
+          "pattern": "^[a-zA-Z0-9_-]+$",
+          "maxLength": 128
+        },
+        "name": {
+          "type": "string",
+          "description": "Contact display name",
+          "maxLength": 100
+        },
+        "phone": {
+          "type": "string",
+          "description": "Validated mobile phone number with country code",
+          "maxLength": 30
+        },
+        "relationship": {
+          "type": "string",
+          "description": "Relationship (e.g. Family, Partner, Medical, Police)",
+          "maxLength": 50
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when contact was saved"
+        }
+      },
+      "required": ["contactId", "userId", "name", "phone"]
+    }
+  },
+  "firestore": {
+    "/location_sessions/{sessionId}": {
+      "schema": {
+        "$ref": "#/entities/LocationSession"
+      },
+      "description": "Tracks real-time mobile location sharing sessions with transparent consent"
+    },
+    "/users/{userId}/emergency_contacts/{contactId}": {
+      "schema": {
+        "$ref": "#/entities/EmergencyContact"
+      },
+      "description": "Emergency contacts configured by authenticated users for SOS notifications"
+    }
+  }
+}

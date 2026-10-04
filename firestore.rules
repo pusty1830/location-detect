@@ -1,0 +1,101 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidLocationSession(data) {
+      return data.keys().hasAll(['sessionId', 'creatorId', 'targetPhoneNumber', 'status', 'consentGranted']) &&
+        data.sessionId is string && data.sessionId.size() <= 128 &&
+        data.creatorId is string && data.creatorId.size() <= 128 &&
+        data.targetPhoneNumber is string && data.targetPhoneNumber.size() <= 40 &&
+        data.status in ['pending_consent', 'sharing_active', 'sharing_stopped', 'sos_active'] &&
+        data.consentGranted is bool &&
+        (!('address' in data) || (data.address is string && data.address.size() <= 300)) &&
+        (!('emergencyNote' in data) || (data.emergencyNote is string && data.emergencyNote.size() <= 500)) &&
+        (!('currentLat' in data) || (data.currentLat is number)) &&
+        (!('currentLng' in data) || (data.currentLng is number)) &&
+        (!('accuracy' in data) || (data.accuracy is number)) &&
+        (!('batteryLevel' in data) || (data.batteryLevel is number)) &&
+        (!('isEmergency' in data) || (data.isEmergency is bool));
+    }
+
+    function isValidEmergencyContact(data) {
+      return data.keys().hasAll(['contactId', 'userId', 'name', 'phone']) &&
+        data.contactId is string && data.contactId.size() <= 128 &&
+        data.userId is string && data.userId.size() <= 128 &&
+        data.name is string && data.name.size() > 0 && data.name.size() <= 100 &&
+        data.phone is string && data.phone.size() > 0 && data.phone.size() <= 30 &&
+        (!('relationship' in data) || (data.relationship is string && data.relationship.size() <= 50));
+    }
+
+    // Ping / connectivity check
+    match /test/{docId} {
+      allow get: if true;
+    }
+
+    // Location Sessions Collection - Strict access control for location privacy
+    match /location_sessions/{sessionId} {
+      // Individual session lookup: Accessible by valid ID for authorized sharers/viewers
+      allow get: if isValidId(sessionId);
+
+      // Session listing: STRICTLY restricted to authenticated owners querying their own sessions
+      allow list: if isSignedIn() && resource.data.creatorId == request.auth.uid;
+      
+      // Session creation: Must follow validated session schema
+      allow create: if isValidId(sessionId) && 
+        isValidLocationSession(incoming()) &&
+        (!isSignedIn() || incoming().creatorId == request.auth.uid);
+
+      // Session updates: Must maintain schema integrity and creator attribution
+      allow update: if isValidId(sessionId) && 
+        isValidLocationSession(incoming()) && 
+        incoming().creatorId == existing().creatorId;
+
+      // Session deletion: Restricted to authenticated session creator
+      allow delete: if isValidId(sessionId) && 
+        isSignedIn() && 
+        existing().creatorId == request.auth.uid;
+    }
+
+    // Emergency Contacts per User (Strict PII Isolation)
+    match /users/{userId}/emergency_contacts/{contactId} {
+      allow get, list: if isOwner(userId) && isValidId(contactId);
+      
+      allow create: if isOwner(userId) && 
+        isValidId(contactId) && 
+        isValidEmergencyContact(incoming()) && 
+        incoming().userId == request.auth.uid;
+
+      allow update: if isOwner(userId) && 
+        isValidId(contactId) && 
+        isValidEmergencyContact(incoming()) && 
+        incoming().userId == existing().userId;
+
+      allow delete: if isOwner(userId) && isValidId(contactId);
+    }
+  }
+}

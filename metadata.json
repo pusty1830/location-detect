@@ -1,0 +1,6 @@
+{
+  "name": "BeaconPath - AI Mobile Location & Safety Finder",
+  "description": "Authorized real-time mobile location tracking with device owner consent, Google Maps live radar, phone number validation, emergency SOS broadcast, and AI safety assistance.",
+  "requestFramePermissions": ["geolocation"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
